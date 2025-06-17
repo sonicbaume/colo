@@ -1,0 +1,15 @@
+[project]
+name = "ordersum"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy<2",
+    "omegaconf>=2.3.0",
+    "pandas>=2.3.0",
+    "pytorch-lightning==1.9.0",
+    "rouge-score==0.1.2",
+    "torch==1.13.1",
+    "transformers==4.34",
+]
