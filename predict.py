@@ -6,14 +6,14 @@ import torch
 import argparse
 import json
 import sys
+from pathlib import Path
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 CLS_TOKEN = "<cls>"
 SEP_TOKEN = "<sep>"
 DOC_TOKEN = "<doc>" 
 
 def predict_sentences(
-    model: CoLo_BART, tokenizer: Any, sentences: List[str], keep_ratio: float
+    model: CoLo_BART, tokenizer: Any, sentences: List[str], keep_ratio: float, device='cpu'
 ):
     if(keep_ratio >= 1):
         raise ValueError("keep_ratio", "should be less than 1: ", keep_ratio)
@@ -41,8 +41,8 @@ def predict_sentences(
         input_ids     = encoding['input_ids'][0]
         cls_token_id  = tokenizer.convert_tokens_to_ids(CLS_TOKEN)
         cls_positions = (input_ids == cls_token_id).nonzero(as_tuple=True)[0].unsqueeze(0)
-        encoding      = { k: v.to(DEVICE) for k, v in encoding.items() }
-        cls_positions = cls_positions.to(DEVICE)
+        encoding      = { k: v.to(device) for k, v in encoding.items() }
+        cls_positions = cls_positions.to(device)
         
         # predict sentences
         with torch.no_grad():
@@ -57,7 +57,7 @@ def predict_sentences(
         
     return out
 
-def load_model_and_tokenizer(checkpoint: str):
+def load_model_and_tokenizer(checkpoint: Path, device = 'cpu'):
     tokenizer = AutoTokenizer.from_pretrained('facebook/bart-large-cnn')
     new_tokens = [CLS_TOKEN, SEP_TOKEN, DOC_TOKEN]
 
@@ -73,9 +73,9 @@ def load_model_and_tokenizer(checkpoint: str):
         beta             = 1.0
     )
             
-    model.load_state_dict(convert_checkpoints(checkpoint, DEVICE))
+    model.load_state_dict(convert_checkpoints(checkpoint, device))
     model.eval()
-    model.to(DEVICE)
+    model.to(device)
     
     return model, tokenizer
     
@@ -103,8 +103,9 @@ def split_sentences_into_chunks(sentences, tokenizer, max_tokens=1024, cls_token
 
     return chunks
 
-def run(sentences: List[str], keep_ratio: float, checkpoint: str):
-    try:         
+def run(sentences_path: Path, keep_ratio: float, checkpoint: Path):
+    try:
+        sentences: list[str] = json.load(open(sentences_path, "r"))    
         model, tokenizer = load_model_and_tokenizer(checkpoint)
         return predict_sentences(model, tokenizer, sentences, keep_ratio)
     except BaseException as e:
@@ -132,6 +133,7 @@ def parse_cli(argv=None):
         "-s",
         "--sentences",
         required=True,
+        type=Path, 
         metavar="PATH",
         help="Path to sentences JSON file",
     )
@@ -147,6 +149,7 @@ def parse_cli(argv=None):
         "-c",
         "--checkpoint",
         required=True,
+        type=Path,
         metavar="CKPT",
         help="Path to model checkpoint (.ckpt)",
     )
@@ -154,14 +157,13 @@ def parse_cli(argv=None):
     args = parser.parse_args(argv)
 
     if not (0.0 < args.ratio < 1.0):
-        parser.error("The -r / --ratio value must be between 0 and 1.")
+        parser.error("The ratio value must be between 0 and 1.")
 
     return args
 
 def main(argv=None):
     args = parse_cli(argv)
     results = run(args.sentences, args.ratio, args.checkpoint)
-    # todo format to JSON
     json.dump(results, sys.stdout, indent=2, ensure_ascii=False)
 
 if __name__ == "__main__":
