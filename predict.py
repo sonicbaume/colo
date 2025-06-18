@@ -164,7 +164,7 @@ def parse_cli(argv=None):
 def main(argv=None):
     args = parse_cli(argv)
     results = run(args.sentences, args.ratio, args.checkpoint)
-    json.dump(results, sys.stdout, indent=2, ensure_ascii=False)
+    print(json.dumps(results, indent=2, ensure_ascii=False))
 
 if __name__ == "__main__":
     main()
