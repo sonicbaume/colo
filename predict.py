@@ -5,7 +5,6 @@ from typing import List, Any
 import torch
 import argparse
 import json
-import sys
 from pathlib import Path
 
 CLS_TOKEN = "<cls>"
