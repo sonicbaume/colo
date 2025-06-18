@@ -1,7 +1,7 @@
 from transformers import AutoTokenizer
 from src.model.colo.bart_base import CoLo_BART
 from src.model.utils import convert_checkpoints
-from typing import List, Any
+from typing import List, Any, Union
 import torch
 import argparse
 import json
@@ -12,12 +12,12 @@ SEP_TOKEN = "<sep>"
 DOC_TOKEN = "<doc>" 
 
 def predict_sentences(
-    model: CoLo_BART, tokenizer: Any, sentences: List[str], keep_ratio: float, device='cpu'
+    model: CoLo_BART, tokenizer: Any, sentences: List[str], keep_ratio: float, return_indexes: bool, device='cpu'
 ):
     if(keep_ratio >= 1):
         raise ValueError("keep_ratio", "should be less than 1: ", keep_ratio)
     
-    out: list[str] = []
+    out: list[Union[str, int]] = []
     chunks = split_sentences_into_chunks(
         sentences,
         tokenizer,
@@ -52,7 +52,13 @@ def predict_sentences(
 
         top_ids = list(output['prediction'][0][0])
         top_ids.sort()
-        out.extend([chunk[i] for i in top_ids])
+        pred_sentences = [chunk[i] for i in top_ids]
+        
+        if return_indexes:
+            idx_map = {s: i for i, s in enumerate(sentences)}
+            out.extend(idx_map[s] for s in pred_sentences)
+        else:
+            out.extend(sentences)
         
     return out
 
@@ -102,11 +108,13 @@ def split_sentences_into_chunks(sentences, tokenizer, max_tokens=1024, cls_token
 
     return chunks
 
-def run(sentences_path: Path, keep_ratio: float, checkpoint: Path):
+def run(sentences_path: Path, keep_ratio: float, checkpoint: Path, return_indexes):
     try:
         sentences: list[str] = json.load(open(sentences_path, "r"))    
         model, tokenizer = load_model_and_tokenizer(checkpoint)
-        return predict_sentences(model, tokenizer, sentences, keep_ratio)
+        return predict_sentences(
+            model, tokenizer, sentences, keep_ratio, return_indexes
+        )
     except BaseException as e:
         print(f"[error]: {e}")
         return None
@@ -152,7 +160,12 @@ def parse_cli(argv=None):
         metavar="CKPT",
         help="Path to model checkpoint (.ckpt)",
     )
-
+    parser.add_argument(
+        "-i", "--indexes",
+        action="store_true",
+        default=False,                
+        help="Return the indices of the kept lines."
+    )
     args = parser.parse_args(argv)
 
     if not (0.0 < args.ratio < 1.0):
@@ -162,7 +175,7 @@ def parse_cli(argv=None):
 
 def main(argv=None):
     args = parse_cli(argv)
-    results = run(args.sentences, args.ratio, args.checkpoint)
+    results = run(args.sentences, args.ratio, args.checkpoint, args.indexes)
     print(json.dumps(results, indent=2, ensure_ascii=False))
 
 if __name__ == "__main__":
