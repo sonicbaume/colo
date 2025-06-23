@@ -29,6 +29,7 @@ class CoLo_BART(nn.Module):
             margin: float = 0.01,
             alpha: float = 1.0,
             beta: float = 1.0,
+            local_files_only = True,
     ):
         super().__init__()
 
@@ -36,7 +37,7 @@ class CoLo_BART(nn.Module):
             raise ValueError('BartTokenizer added cls, sep, doc must be given')
 
         self.base_checkpoint = base_checkpoint
-        bart = BartForConditionalGeneration.from_pretrained(self.base_checkpoint)
+        bart = BartForConditionalGeneration.from_pretrained(self.base_checkpoint, local_files_only=local_files_only)
         bart.resize_token_embeddings(len(bart_tokenizer))
         self.base_model = bart.get_encoder()
 

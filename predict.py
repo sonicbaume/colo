@@ -1,3 +1,4 @@
+from xmlrpc.client import Boolean
 from transformers import AutoTokenizer
 from src.model.colo.bart_base import CoLo_BART
 from src.model.utils import convert_checkpoints
@@ -49,23 +50,27 @@ def predict_sentences(
     
     return top_ids
 
-def load_model_and_tokenizer(checkpoint: Path, device = 'cpu'):
-    tokenizer = AutoTokenizer.from_pretrained('facebook/bart-large-cnn')
+def load_model_and_tokenizer(bart_checkpoint: Path, colo_checkpoint: Path, device = 'cpu'):
+    tokenizer = AutoTokenizer.from_pretrained(
+        bart_checkpoint,
+        local_files_only=True,
+    )
     new_tokens = [CLS_TOKEN, SEP_TOKEN, DOC_TOKEN]
 
     tokenizer.add_special_tokens({"additional_special_tokens": new_tokens})
     
     model = CoLo_BART(
         tokenizer,
-        base_checkpoint  = "facebook/bart-large-cnn",
+        base_checkpoint  = str(bart_checkpoint),
         enc_num_layers   = 0,
         enc_dropout_prob = 0.1,
         margin           = 0.01,
         alpha            = 1.0,
         beta             = 1.0
+        local_files_only = True
     )
             
-    model.load_state_dict(convert_checkpoints(checkpoint, device))
+    model.load_state_dict(convert_checkpoints(colo_checkpoint, device))
     model.eval()
     model.to(device)
     
@@ -81,10 +86,10 @@ def count_tokens(sentences, tokenizer):
         
     return total_tokens
 
-def run(sentences_path: Path, keep_ratio: float, checkpoint: Path, return_indexes):
+def run(sentences_path: Path, keep_ratio: float, colo_checkpoint: Path, bart_checkpoint: Path, return_indexes: Boolean):
     try:
-        sentences: list[str] = json.load(open(sentences_path, "r"))    
-        model, tokenizer = load_model_and_tokenizer(checkpoint)
+        sentences: list[str] = json.load(open(sentences_path, "r"))
+        model, tokenizer = load_model_and_tokenizer(bart_checkpoint, colo_checkpoint)
         if(keep_ratio >= 1):
             raise ValueError("keep_ratio", "should be less than 1: ", keep_ratio)
         
@@ -114,7 +119,7 @@ def parse_cli(argv=None):
     Parameters
     ----------
     argv : list[str] | None
-        Defaults to `sys.argv[1:]`.  Pass an explicit list for unit testing.
+        Defaults to `sys.argv[1:]`. 
 
     Returns
     -------
@@ -141,12 +146,21 @@ def parse_cli(argv=None):
         help="Threshold/ratio in the range 0-1",
     )
     parser.add_argument(
-        "-c",
-        "--checkpoint",
+        "-cc",
+        "--colo-checkpoint",
         required=True,
         type=Path,
         metavar="CKPT",
-        help="Path to model checkpoint (.ckpt)",
+        help="Path to colo model checkpoint (.ckpt)",
+    )
+    parser.add_argument(
+        "-bc",
+        "--bart-checkpoint",
+        required=False,
+        default="facebook/bart-large-cnn",
+        type=Path,
+        metavar="CKPT",
+        help="Path to bart model checkpoint (.ckpt)",
     )
     parser.add_argument(
         "-i", "--indexes",
@@ -162,8 +176,8 @@ def parse_cli(argv=None):
     return args
 
 def main(argv=None):
-    args = parse_cli(argv)
-    results = run(args.sentences, args.ratio, args.checkpoint, args.indexes)
+    args    = parse_cli(argv)
+    results = run(args.sentences, args.ratio, args.colo_checkpoint, args.bart_checkpoint, args.indexes)
     print(json.dumps(results, indent=2, ensure_ascii=False))
 
 if __name__ == "__main__":

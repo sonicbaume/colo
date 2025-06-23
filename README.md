@@ -12,12 +12,12 @@ pip install -r requirements.txt
 ## Usage 
 ### Get sentences at 75% of original length
 ```bash
-python3 predict.py -s sentences.json -r 0.75 -c /path/to/checkpoints.ckpt
+python3 predict.py -s sentences.json -r 0.75 -cc /path/to/checkpoint.ckpt
 ```
 
 ### Get indexes at 75% of original length
 ```bash
-python3 predict.py -s sentences.json -r 0.75 -c /path/to/checkpoints.ckpt -i
+python3 predict.py -s sentences.json -r 0.75 -cc /path/to/colo-checkpoint.ckpt -bc /path/to/bart-checkpoint.ckpt -i
 ```
 
 ## License
