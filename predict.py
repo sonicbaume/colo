@@ -59,7 +59,10 @@ def predict_sentences(
             out.extend(idx_map[s] for s in pred_sentences)
         else:
             out.extend(sentences)
-        
+    
+    if(return_indexes):
+        out.sort()
+    
     return out
 
 def load_model_and_tokenizer(checkpoint: Path, device = 'cpu'):
@@ -88,7 +91,7 @@ def split_sentences_into_chunks(sentences, tokenizer, max_tokens=1024, cls_token
     chunks = []
     current_chunk = []
     current_token_count = 0
-
+    
     for sentence in sentences:
         text_with_cls = f"{cls_token} {sentence}"
         token_count = len(tokenizer.encode(text_with_cls, add_special_tokens=False))
@@ -105,7 +108,7 @@ def split_sentences_into_chunks(sentences, tokenizer, max_tokens=1024, cls_token
 
     if current_chunk:
         chunks.append(current_chunk)
-
+        
     return chunks
 
 def run(sentences_path: Path, keep_ratio: float, checkpoint: Path, return_indexes):
