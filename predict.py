@@ -50,10 +50,10 @@ def predict_sentences(
     
     return top_ids
 
-def load_model_and_tokenizer(bart_checkpoint: Path, colo_checkpoint: Path, device = 'cpu'):
+def load_model_and_tokenizer(bart_checkpoint: str, colo_checkpoint: str, device = 'cpu', local_files_only=True):
     tokenizer = AutoTokenizer.from_pretrained(
         bart_checkpoint,
-        local_files_only=True,
+        local_files_only=local_files_only,
     )
     new_tokens = [CLS_TOKEN, SEP_TOKEN, DOC_TOKEN]
 
@@ -66,8 +66,8 @@ def load_model_and_tokenizer(bart_checkpoint: Path, colo_checkpoint: Path, devic
         enc_dropout_prob = 0.1,
         margin           = 0.01,
         alpha            = 1.0,
-        beta             = 1.0
-        local_files_only = True
+        beta             = 1.0,
+        local_files_only = local_files_only
     )
             
     model.load_state_dict(convert_checkpoints(colo_checkpoint, device))
@@ -86,7 +86,7 @@ def count_tokens(sentences, tokenizer):
         
     return total_tokens
 
-def run(sentences_path: Path, keep_ratio: float, colo_checkpoint: Path, bart_checkpoint: Path, return_indexes: Boolean):
+def run(sentences_path: Path, keep_ratio: float, colo_checkpoint: str, bart_checkpoint: str, return_indexes: Boolean):
     try:
         sentences: list[str] = json.load(open(sentences_path, "r"))
         model, tokenizer = load_model_and_tokenizer(bart_checkpoint, colo_checkpoint)
@@ -149,7 +149,7 @@ def parse_cli(argv=None):
         "-cc",
         "--colo-checkpoint",
         required=True,
-        type=Path,
+        type=str,
         metavar="CKPT",
         help="Path to colo model checkpoint (.ckpt)",
     )
@@ -158,7 +158,7 @@ def parse_cli(argv=None):
         "--bart-checkpoint",
         required=False,
         default="facebook/bart-large-cnn",
-        type=Path,
+        type=str,
         metavar="CKPT",
         help="Path to bart model checkpoint (.ckpt)",
     )
